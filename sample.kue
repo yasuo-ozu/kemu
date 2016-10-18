@@ -1,31 +1,32 @@
-DATA1:  EQU             80H   
-DATA2:  EQU             81H   
-ANS:    EQU             82H
+DVD:    EQU             80H   
+DVS:    EQU             81H   
+QOT:    EQU             82H
+RMD:    EQU             83H
 WORK:   EQU             0F0H
 EOR     ACC,    ACC
-ST      ACC,    [ANS]
-ST      ACC,    [ANS+1]
+ST      ACC,    [QOT]
+ST      ACC,    [RMD]
+LD      ACC,    [DVD]
 ST      ACC,    [WORK]
-LD      ACC,    [DATA2]
-ST      ACC,    [WORK+1]
-LD      IX,     [DATA1]
-LOOP:   SRL     IX      
-BNC             SKIP
-RCF             
-LD      ACC,    [ANS+1]
-ADC     ACC,    [WORK+1]
-ST      ACC,    [ANS+1]
-LD      ACC,    [ANS]
-ADC     ACC,    [WORK]
-ST      ACC,    [ANS]
-SKIP:   CMP     IX,     0
-BZ              FIN
-LD      ACC,    [WORK+1]
+LD      IX,     8
+ LOOP:   LD      ACC,    [WORK]
 SLA     ACC     
-ST      ACC,    [WORK+1]
-LD      ACC,    [WORK]
-RLA     ACC     
 ST      ACC,    [WORK]
-BA              LOOP
- FIN:    HLT             
- END     
+LD      ACC,    [RMD]
+ RLA     ACC     
+RCF             
+ SBC     ACC,    [DVS]
+ BC              SP1
+SCF             
+BA              SP2
+SP1:    ADD     ACC,    [DVS]
+RCF             
+ SP2:    ST      ACC,    [RMD]
+LD      ACC,    [QOT]
+RLA     ACC     
+  ST      ACC,    [QOT]
+ SUB     IX,     1
+ BP              LOOP
+ HLT             
+
+                                END     

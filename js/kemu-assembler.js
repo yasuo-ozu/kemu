@@ -47,7 +47,7 @@
 							throw new KasmException("'" + s + "' は正しい数値の表記ではありません。16進数なら末尾に'H'をつける必要があります。");
 						a.push(parseInt(s, 10));
 					}
-					if (i <= line.length && !c.match(/\s/)) throw new KasmException("'" + s + c + "' は正しい数値の表記ではありません");
+					if (i <= line.length && c.match(/[A-Za-z0-9_]/)) throw new KasmException("'" + s + c + "' は正しい数値の表記ではありません");
 				} else if (",:+-()[]/*".indexOf(c) != -1) {
 					a.push(c);
 					c = line[i++];
@@ -99,7 +99,7 @@
 				"OR": 13, "AND": 14, "CMP": 15
 			};
 			var simpleOp = {
-				"OUT": 16, "IN": 24, "RCF": 32, "SCF": 40, "NOP": 0, "HLT": 15
+				"OUT": 16, "IN": 31, "RCF": 32, "SCF": 47, "NOP": 0, "HLT": 15
 			};
 			var branchCC = {
 				"BA": 0, "BNZ": 1, "BZP": 2, "BP": 3, "BNI": 4, "BNC": 5, "BGE": 6,
@@ -116,9 +116,8 @@
 				var line = lines[l];
 				var labelFlg = 0;
 				try {
-					addrToMetadata[addr] = meta;
-					var a = this.tokenize(line);
 					var meta = {line: l, address: addr, jumpTo: -1, jumpMode: 0, reachable: 0, opecode: null};
+					var a = this.tokenize(line);
 					while (a.length >= 2 && a[1] == ":") {
 						if (typeof a[0] == "string") {
 							if (labels[a[0]]) {
@@ -211,6 +210,7 @@
 								throw new KasmException("数値 " + a[0] + " は無効です。ラベルに対応する数値を定義するには、数値の前に 'EQU' を補います。");
 							else throw new KasmException("命令 '" + a[0] + "' を認識できません。");
 						}
+						addrToMetadata[meta.address] = meta;
 					}
 					metadata.push(meta);
 				} catch (e) {
@@ -253,7 +253,7 @@
 							addrToMetadata[this.binary[metadata[i].jumpTo]].reachable = 1;
 						}
 					}
-					if (reachable != +metadata[i].reachable) {
+					if (reachable && !metadata[i].reachable) {
 						metadata[i].reachable = reachable;
 						metaUpated++;
 					}
@@ -263,6 +263,12 @@
 				if (!metadata[i].reachable && metadata[i].opecode && metadata[i].opecode != "NOP" &&
 					metadata[i].opecode != "END") {
 					this.message("情報(" + (metadata[i].line + 1) + "行目): この命令は到達不可能です");
+				}
+				if (i > 0 && metadata[i - 1].jumpMode >= 0 && metadata[i - 1].opecode != null &&
+					("SR".indexOf(metadata[i - 1].opecode[0]) != -1) && "RL".indexOf(metadata[i - 1].opecode[1]) != -1) {
+					if (metadata[i].opecode[0] == "B" && metadata[i].opecode != "BA" && metadata[i].opecode != "BNC" && metadata[i].opecode != "BC") {
+						this.message("情報(" + (metadata[i].line + 1) + "行目): ロテート, シフト命令の結果のフラグレジスタに依存する処理に見えます。KUE-CHIP2の問題により正しく実行されない可能性が有ります。");
+					}
 				}
 			}
 			if (metadata[i - 1].jumpMode >= 0 && metadata[i - 1].reachable) {
